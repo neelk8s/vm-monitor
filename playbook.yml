@@ -1,0 +1,63 @@
+---
+- name: Monitor VM resources and send alert email
+  hosts: monitored_vms
+  gather_facts: yes
+
+  tasks:
+
+    - name: Get live CPU usage percent
+      shell: top -l 1 | grep "CPU usage" | awk '{print $3}' | cut -d'%' -f1
+      register: cpu_raw
+      changed_when: false
+
+    - name: Parse CPU value
+      set_fact:
+        cpu_used: "{{ cpu_raw.stdout | float | round(1) }}"
+
+    - name: Get memory usage on Mac
+      shell: |
+        vm_stat | awk '
+        /Pages active/ {active=$3}
+        /Pages inactive/ {inactive=$3}
+        /Pages wired/ {wired=$4}
+        /Pages free/ {free=$3}
+        END {
+          used=(active+inactive+wired)*4096/1024/1024
+          total=(active+inactive+wired+free)*4096/1024/1024
+          printf "%.1f", (used/total)*100
+        }'
+      register: mem_raw
+      changed_when: false
+
+    - name: Parse memory value
+      set_fact:
+        mem_used: "{{ mem_raw.stdout | float | round(1) }}"
+
+    - name: Get disk usage percent
+      shell: df / | awk 'NR==2 {print $5}' | cut -d'%' -f1
+      register: disk_raw
+      changed_when: false
+
+    - name: Parse disk value
+      set_fact:
+        disk_used: "{{ disk_raw.stdout | float | round(1) }}"
+
+    - name: Set alert flag
+      set_fact:
+        send_alert: "{{ (cpu_used | float > cpu_threshold) or
+                        (mem_used | float > memory_threshold) or
+                        (disk_used | float > disk_threshold) }}"
+
+    - name: Send alert email
+      mail:
+        host:     "{{ smtp_host }}"
+        port:     "{{ smtp_port }}"
+        username: "{{ smtp_user }}"
+        password: "{{ smtp_password }}"
+        to:       "{{ alert_to }}"
+        from:     "{{ alert_from }}"
+        subject:  "{{ alert_subject }}"
+        body:     "{{ lookup('template', 'templates/alert_email.j2') }}"
+        subtype:  html
+        secure:   starttls
+      when: send_alert | bool

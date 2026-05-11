@@ -1,0 +1,27 @@
+<h2 style="color:#c0392b">VM Alert: {{ inventory_hostname }}</h2>
+<table border="1" cellpadding="8" style="border-collapse:collapse">
+  <tr style="background:#f0f0f0">
+    <th>Metric</th><th>Current</th><th>Threshold</th><th>Status</th>
+  </tr>
+  <tr>
+    <td>CPU</td><td>{{ cpu_used }}%</td><td>{{ cpu_threshold }}%</td>
+    <td style="color:{{ 'red' if cpu_used|float > cpu_threshold else 'green' }}">
+      {{ 'ALERT' if cpu_used|float > cpu_threshold else 'OK' }}
+    </td>
+  </tr>
+  <tr>
+    <td>Memory</td><td>{{ mem_used }}%</td><td>{{ memory_threshold }}%</td>
+    <td style="color:{{ 'red' if mem_used|float > memory_threshold else 'green' }}">
+      {{ 'ALERT' if mem_used|float > memory_threshold else 'OK' }}
+    </td>
+  </tr>
+  <tr>
+    <td>Disk (/)</td><td>{{ disk_used }}%</td><td>{{ disk_threshold }}%</td>
+    <td style="color:{{ 'red' if disk_used|float > disk_threshold else 'green' }}">
+      {{ 'ALERT' if disk_used|float > disk_threshold else 'OK' }}
+    </td>
+  </tr>
+</table>
+<p style="color:#666;font-size:12px">
+  Host: {{ ansible_hostname }} | OS: {{ ansible_distribution }} {{ ansible_distribution_version }} | Time: {{ ansible_date_time.iso8601 }}
+</p>
